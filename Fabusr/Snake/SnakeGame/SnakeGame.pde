@@ -1,25 +1,30 @@
 import java.util.Vector;
 
 private Game game;
-private final int offset = 20;
-private final int windowSize = 450;
+private final int OFFSET = 30;
+private final int WINDOW_SIZE = 240;
+private final int GAME_LOOP_DELAY = 100; 
+
 
 void setup()
 {          
   //can't assign windowSize directly? why not?! ;(
-  size(500, 500);
+  size(300, 300, P3D);
   fill(100,100,100);
-  rect(offset,offset,windowSize,windowSize);    
-  game = new Game(500);
+  rect(OFFSET,OFFSET,WINDOW_SIZE,WINDOW_SIZE);    
+  game = new Game();
 }
 
 void draw()
 {
-  delay(100);
-  clear();  
-  //if(game.getSpeed() %10 == 0){    
-    game.run();  
-  //}  
+  if(!game.getPaused())
+  {
+    delay(GAME_LOOP_DELAY);
+    clear();  
+    fill(100,100,100);
+    rect(OFFSET,OFFSET,WINDOW_SIZE,WINDOW_SIZE);    
+    game.run();        
+  }    
 }
 
 void keyPressed()
@@ -29,7 +34,8 @@ void keyPressed()
   if(keyCode == DOWN) {  moveDirection = MoveDirection.DOWN; }
   if(keyCode == LEFT) { moveDirection = MoveDirection.LEFT; }
   if(keyCode == RIGHT) { moveDirection = MoveDirection.RIGHT; }  
-  if(keyCode == 'R') { game = new Game(500); }
+  if(keyCode == 'R') { game = new Game(); }
+  if(keyCode == 'P') { game.togglePause();; }
   
   if(moveDirection != null)
   {
@@ -37,148 +43,204 @@ void keyPressed()
   } 
 }
 
-class Game {
+public class Game {
   boolean gameOver;
   Snake snake; 
-  float speed = 100;
-  int windowSize;
+  Food food;
+  Peasant peasant;
+  //int windowSize;
+  int score;
+  boolean paused;
   
-  public void setSnakeMoveDirection(MoveDirection moveDirection)
+  public boolean getPaused()
   {
-    snake.setCurrentMoveDirection(moveDirection);
+    return this.paused;
   }
   
-  public float getSpeed()
-  {
-    return this.speed;
-  }
-  
-  
-  public Game(int windowSize)
-  {     
-    speed=speed/frameRate;    
-    snake = new Snake();
-    this.windowSize = windowSize;
-  }
-  
-  public void reset()
-  {
        
-    //snake.Move();
-  }  
+  public Game()
+  {     
+    this.snake = new Snake();
+    this.peasant = new Peasant();
+    this.food = peasant.growNewFood(snake);                  
+    this.score = 0;
+    this.paused = false;
+  }
   
   public void run()
   {
-    if(gameOver)
-    {
-      String modelString = "game over";
-      text("game over",windowSize / 2 + offset,windowSize / 2 + offset,40);
+    if(this.paused) return;
+    if(this.gameOver)
+    {      
+      textAlign(CENTER, CENTER);
+      fill(255);
+      text("game over. retry with R",WINDOW_SIZE / 2 + OFFSET,WINDOW_SIZE / 2 + OFFSET);
+      
     } else {
-      gameOver = snake.canMove();
-      if(!gameOver)
+      stroke(0);
+      
+      //some nice point grid?
+      for(int y = OFFSET; y < WINDOW_SIZE + OFFSET; y+= GameObject.SIZE)
       {
-        snake.move();           
-        snake.Draw();
+        for(int x = OFFSET; x < WINDOW_SIZE + OFFSET; x+= GameObject.SIZE)
+        { 
+          fill(0, 255, 0);
+          point(x, y);         
+        }
+      }  
+      
+      this.gameOver = !this.snake.canMove();
+      if(!this.gameOver)
+      {
+        text("score: " + this.score, WINDOW_SIZE - OFFSET, OFFSET / 2); 
+        this.snake.move();           
+        if (this.snake.eatsFood(food))
+        {
+          this.score += Food.VALUE;
+          this.food = peasant.growNewFood(snake);
+        }
+        this.snake.Draw();
+        this.food.Draw();
       }      
     }    
   } 
+  
+  public void setSnakeMoveDirection(MoveDirection moveDirection)
+  {
+    this.snake.setCurrentMoveDirection(moveDirection);
+  }
+  
+  public void togglePause()
+  {
+    this.paused = !this.paused;
+  }
 }
 
 class Snake {
-  Vector<BodyPart> bodyParts;
+  Vector<GameObject> bodyParts;
   MoveDirection currentMoveDirection;
   private Head head;  
-  
-  public void setCurrentMoveDirection(MoveDirection moveDirection)
-  {
-    this.currentMoveDirection = moveDirection;
-  }
   
   public Snake()
   {
     //has at least a head, one chunk of body and a tail
-    bodyParts = new Vector<BodyPart> (); //<>//
-    head = new Head(200, 130);    
-    bodyParts.add(new Body(200, 140));
-    bodyParts.add(new Tail(200, 150));        
-    currentMoveDirection = MoveDirection.UP;    
+    this.bodyParts = new Vector<GameObject> ();
+    this.head = new Head(250, 250);    
+    this.bodyParts.add(new Body(200, head.getY() + GameObject.SIZE));
+    this.bodyParts.add(new Tail(200, head.getY() + (GameObject.SIZE * 2)));        
+    this.currentMoveDirection = MoveDirection.UP;    
   }    
   
-  public boolean findsFood()
+  public Vector<GameObject> getBodyParts()
   {
-    return true;
+    return this.bodyParts;
   }
+  
+  public void setCurrentMoveDirection(MoveDirection newMoveDirection)
+  {
+    if (!checkOppositeDirection(this.currentMoveDirection, newMoveDirection))
+    {
+      this.currentMoveDirection = newMoveDirection;
+    }        
+  }
+  
+  public boolean eatsFood(Food foodToEat)
+  {
+    if (objectsCollided(head, foodToEat))
+    {
+      //the food becomes part of the body...yuk!
+      this.bodyParts.add(0, foodToEat);      
+      return true;
+    }
+    return false;
+  }  
   
   public boolean canMove()
   {
     Locatable nextMovedPosition = this.getNextHeadLocation();
-    return (!collideWithWall(nextMovedPosition) && collideSelf(nextMovedPosition));    
+    return (!collideWithWall(nextMovedPosition) && !collideSelf(nextMovedPosition));    
   }
+  
+  private boolean checkOppositeDirection(MoveDirection oldMoveDirection, MoveDirection newMoveDirection)
+  {    
+    return ((oldMoveDirection == MoveDirection.UP && newMoveDirection == MoveDirection.DOWN) ||
+        (oldMoveDirection == MoveDirection.DOWN && newMoveDirection == MoveDirection.UP) ||
+        (oldMoveDirection == MoveDirection.LEFT && newMoveDirection == MoveDirection.RIGHT) ||
+        (oldMoveDirection == MoveDirection.RIGHT && newMoveDirection == MoveDirection.LEFT));  
+  }     //<>//
   
   private boolean collideWithWall(Locatable nextHeadPosition)
   {    
     //left border
-    if(nextHeadPosition.getX() < offset)
+    if(nextHeadPosition.getX() < OFFSET)
     {
       return true;
     }    
     //right border
-    if(nextHeadPosition.getX() > (windowSize + offset))
+    if(nextHeadPosition.getX() >= (WINDOW_SIZE + OFFSET))
     {
       return true; 
     }    
     //top border
-    if(nextHeadPosition.getY() < (offset))
+    if(nextHeadPosition.getY() < (OFFSET))
     {
       return true;
     }
      //bottom Border
-    if(nextHeadPosition.getY() > (windowSize + offset))
+    if(nextHeadPosition.getY() >= (WINDOW_SIZE + OFFSET))
     {
       return true;
     }    
     
     return false;    
   }
+
   
   private boolean collideSelf(Locatable nextHeadPosition)
-  {
-    int nextXRangeMax = nextHeadPosition.getX() + 5;
-    int nextXRangeMin = nextHeadPosition.getX() - 5;    
-    int nextYRangeMax = nextHeadPosition.getY() + 5;    
-    int nextYRangeMin = nextHeadPosition.getY() - 5;      
-    for(BodyPart bodyPart : bodyParts)
+  {      
+    for(GameObject bodyPart : bodyParts)
     {
-      if(bodyPart.getX() > nextXRangeMax && bodyPart.getX() > nextXRangeMin && bodyPart.getY() > nextYRangeMax && bodyPart.getY() > nextYRangeMin)
-      {        
-         //collided!
-         return true;
+      if(objectsCollided(nextHeadPosition, bodyPart))
+      {
+        return true;
       }      
     }    
     return false;
+  }
+  
+  public boolean collides(Locatable other)
+  {
+    return objectsCollided(this.head, other);
+  }
+  
+  private boolean objectsCollided(Locatable object1, Locatable object2)
+  {
+    int nextXRangeMax = object1.getX() + (GameObject.SIZE / 2);
+    int nextXRangeMin = object1.getX() - (GameObject.SIZE / 2);    
+    int nextYRangeMax = object1.getY() + (GameObject.SIZE / 2);    
+    int nextYRangeMin = object1.getY() - (GameObject.SIZE / 2);    
+     if(object2.getX() < nextXRangeMax && 
+       object2.getX() > nextXRangeMin && 
+       object2.getY() < nextYRangeMax && 
+       object2.getY() > nextYRangeMin)
+    {        
+       //collided!
+       return true;
+    }      
+    return false;    
   }
   
   
   public void move()
   {
     int previousX = head.getX();
-    int previousY = head.getY();
-    switch(currentMoveDirection) {
-      case UP:   
-        head.setY(head.getY() - BodyPart.SIZE);       
-        break;
-      case DOWN:        
-        head.setY(head.getY() + BodyPart.SIZE);        
-        break;
-      case LEFT:
-        head.setX(head.getX() - BodyPart.SIZE);
-        break;
-      case RIGHT:
-        head.setX(head.getX() + BodyPart.SIZE);
-        break;        
-    }      
+    int previousY = head.getY();    
+    
+    Locatable nextHeadPosition = this.getNextHeadLocation();
+    head.setY(nextHeadPosition.getY());
+    head.setX(nextHeadPosition.getX());
 
-    for(BodyPart bodyPart : bodyParts)
+    for(GameObject bodyPart : bodyParts)
     {
        int newX = previousX;
        int newY = previousY;
@@ -187,23 +249,38 @@ class Snake {
        bodyPart.setX(newX);
        bodyPart.setY(newY);                   
     }    
+    
+      switch(currentMoveDirection) {
+      case UP:           
+        head.setHeadDirection(HeadDirection.VERTICAL);       
+        break;
+      case DOWN:        
+        head.setHeadDirection(HeadDirection.VERTICAL);
+        break;
+      case LEFT:
+        head.setHeadDirection(HeadDirection.HORIZONTAL);
+        break;
+      case RIGHT:
+        head.setHeadDirection(HeadDirection.HORIZONTAL);
+        break;        
+      }      
   }
   
   private Locatable getNextHeadLocation()
   {
-    Locatable headLocation = new Head(0,0);    
+    Locatable headLocation = new Head(head.getX(),head.getY());    
     switch(currentMoveDirection) {
       case UP:   
-        headLocation.setY(head.getY() - BodyPart.SIZE);       
+        headLocation.setY(head.getY() - GameObject.SIZE);              
         break;
       case DOWN:        
-        headLocation.setY(head.getY() + BodyPart.SIZE);        
+        headLocation.setY(head.getY() + GameObject.SIZE);
         break;
       case LEFT:
-        headLocation.setX(head.getX() - BodyPart.SIZE);
+        headLocation.setX(head.getX() - GameObject.SIZE);
         break;
       case RIGHT:
-        headLocation.setX(head.getX() + BodyPart.SIZE);
+        headLocation.setX(head.getX() + GameObject.SIZE);
         break;        
     }  
     return headLocation;
@@ -213,14 +290,16 @@ class Snake {
   public void Draw()
   {
     head.Draw();
-    for(BodyPart bodyPart : bodyParts)
-    {
-      bodyPart.Draw();      
+    for(GameObject bodyPart : bodyParts)
+    {      
+      bodyPart.Draw();
+      fill(255, 255, 255);
+      point(bodyPart.getX(), bodyPart.getY());
     }
   }
 }
 
-class Body extends BodyPart
+class Body extends GameObject
 { 
   public Body(int x, int y)
   {
@@ -230,12 +309,12 @@ class Body extends BodyPart
   @Override
   public void Draw()
   {
-    fill(100, 100, 100);
+    fill(100, 0, 100);
     super.Draw();
   }
 }
 
-class Tail extends BodyPart
+class Tail extends GameObject
 {
   public Tail(int x, int y)
   {
@@ -250,30 +329,51 @@ class Tail extends BodyPart
   }
 }
 
-class Head extends BodyPart
-{     
+class Head extends GameObject
+{   
+  private HeadDirection headDirection;
+  private final static int EYE_SIZE = 2;
+  
   public Head(int x, int y)
-  {
+  {    
     super(x, y);
+    headDirection = HeadDirection.VERTICAL;
+  }
+  
+  public void setHeadDirection(HeadDirection headDirection)
+  {
+    this.headDirection = headDirection;
   }
   
   @Override
   public void Draw()
   {
     fill(204, 102, 0);
-    super.Draw();    
-    //a head needs eyes, right?
-    //fill(0, 0, 0);    
-  }
+    super.Draw();        
+    
+    switch(this.headDirection)
+    {
+      //a head needs eyes, right?
+      case HORIZONTAL:
+        fill(0);
+        rect(this.getX() + GameObject.SIZE / 3, this.getY() + GameObject.SIZE / 3, EYE_SIZE, EYE_SIZE);
+        rect(this.getX() + GameObject.SIZE  / 3, this.getY() + GameObject.SIZE * 2 / 3, EYE_SIZE, EYE_SIZE);
+        break;        
+      case VERTICAL:
+        fill(0);
+        rect(this.getX() + GameObject.SIZE / 3, this.getY() + GameObject.SIZE / 2, EYE_SIZE, EYE_SIZE);
+        rect(this.getX() + GameObject.SIZE * 2 / 3, this.getY() + GameObject.SIZE / 2, EYE_SIZE, EYE_SIZE);
+        break;
+   }     
+  }   
 }
 
-class BodyPart implements Locatable
+class GameObject implements Locatable
 {
- private int x, y;
- //assuming each bodypart has the same size...awkward.
+ private int x, y; 
  public final static int SIZE  = 10; 
  
- public BodyPart(int x, int y)
+ public GameObject(int x, int y)
  {
    this.x = x;
    this.y = y;   
@@ -301,7 +401,7 @@ class BodyPart implements Locatable
  
  public void Draw()
  {
-   rect(this.getX(), this.getY(),BodyPart.SIZE, BodyPart.SIZE);
+   rect(this.getX(), this.getY(),GameObject.SIZE, GameObject.SIZE);
  }
 }
 
@@ -313,33 +413,54 @@ public interface Locatable
   int getY();  
 }
 
-public class Food implements Locatable
+public class Food extends GameObject
 {
- private int x, y; 
- public final static int SIZE  = 10; 
- 
- public int getX()
- {
-   return this.x;
- }
- 
- public void setX(int x)
- {   
-   this.x = x;
- } 
- 
- public int getY()
- {
-   return this.y;
- }
- 
- public void setY(int y)
- {
-   this.y = y;
- }
+  public static final int VALUE = 9;  
+  color col;
+  
+  public Food(int x, int y, color col)
+  {
+    super(x, y);    
+    this.col = col;
+  }
+     
+  
+  @Override
+  public void Draw()
+  {
+    fill(this.col);      
+    super.Draw();               
+  }
+}
+
+public class Peasant
+{
+  public Food growNewFood(Snake snake)
+  {    
+    return findRandomPlaceForFood(snake);        
+  }
+  
+  private Food findRandomPlaceForFood(Snake snake)
+  {       
+    //this function gets really slow once the snake has filled the board...
+    boolean foodCollidesWithSnake = true;
+    Food food = null;
+    while(foodCollidesWithSnake){      
+      int randomX = (int)((floor(random(OFFSET, WINDOW_SIZE + OFFSET) / GameObject.SIZE)) * GameObject.SIZE);
+      int randomY = (int)(floor((random(OFFSET, WINDOW_SIZE + OFFSET) / GameObject.SIZE)) * GameObject.SIZE);
+      
+      food = new Food(randomX, randomY, color(random(255), random(255), random(255)));      
+      foodCollidesWithSnake = snake.collides(food);
+    }    
+    return food;
+  }    
 }
 
 
 public enum MoveDirection {
     UP, DOWN, LEFT, RIGHT  
+}
+
+public enum HeadDirection {
+    HORIZONTAL, VERTICAL
 }
