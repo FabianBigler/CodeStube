@@ -1,4 +1,3 @@
-
 final int MAX_COLS = 20;
 final int MAX_ROWS = 20;
 final int FIELD_WIDTH = 40;
@@ -21,7 +20,7 @@ boolean gameOver = false;
 
 
 void setup()
-{
+{    
   snakeX = new int[100];
   snakeX[0] = 2;
   snakeX[1] = 1;
@@ -92,7 +91,7 @@ void drawGameBoard()
       rect(fieldX, fieldY, FIELD_WIDTH, FIELD_WIDTH);
       fieldX += FIELD_WIDTH;
     }
-    
+
     fieldX = 0;
     fieldY += FIELD_WIDTH;
   }
@@ -149,6 +148,7 @@ void checkBitItself()
     {
       println("GameOver!");
       gameOver = true;
+      break;
     }
   }
 }
@@ -172,7 +172,7 @@ void setFoodLocation()
 
 
 void increaseGameSpeed()
-{
+{  
   switch(snakeLen)
   {
   case 3:
@@ -247,12 +247,11 @@ void setDirection()
 {
   switch (direction)
   {
-   case 0: 
+  case 0:
   }
 }
 
 void setSnakeDirection()
 {
   boolean xMatched = false;
- 
 }
