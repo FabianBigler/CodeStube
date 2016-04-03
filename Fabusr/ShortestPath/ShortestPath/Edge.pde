@@ -1,35 +1,35 @@
 public class Edge
 {
   private int id;
-  private Vertex vertex1;
-  private Vertex vertex2;  
-  private int distance;      
+  private Vertex source;
+  private Vertex destination;  
+  private int weight;      
 
-  public Vertex getVertex1()
+  public Vertex getSource()
   {
-    return this.vertex1;
+    return this.source;
   }
 
-  public Vertex getVertex2()
+  public Vertex getDestination()
   {
-    return this.vertex2;
+    return this.destination;
   }
 
-  public int getDistance()
+  public int getWeight()
   {
-    return this.distance;
+    return this.weight;
   }
 
 
   public Edge(int id, Vertex v1, Vertex v2)
   {
     this.id = id;
-    this.vertex1 = v1;
-    this.vertex2 = v2;
+    this.source = v1;
+    this.destination = v2;
     //weight is the distance between vector1 and vector2        
     //distance = (int) sqrt((this.vertex2.getX() - this.vertex1.getX())^2+(this.vertex2.getY() - this.vertex1.getY())^2);
     //distance = (int) sqrt((this.vertex2.getX() - this.vertex1.getX())^2+(this.vertex2.getY() - this.vertex1.getY())^2);
-    this.distance = (int) dist(this.vertex1.getX(), this.vertex1.getY(), this.vertex2.getX(), this.vertex2.getY());
+    this.weight = (int) dist(this.source.getX(), this.source.getY(), this.destination.getX(), this.destination.getY());
     //println("id: " + this.id +  " v1: x: " + this.vertex1.getX() + " y:" + this.vertex1.getY());
     //println("v2: x: " + this.vertex2.getX() + " y:" + this.vertex2.getY());
     //println("distance:" + distance);
@@ -37,11 +37,11 @@ public class Edge
 
   public void display()
   {        
-    line(vertex1.getX(), vertex1.getY(), vertex2.getX(), vertex2.getY());    
+    line(source.getX(), source.getY(), destination.getX(), destination.getY());    
     stroke(100);
-    int textX = (int) ((vertex2.getX() - vertex1.getX()) / 2);
-    int textY = (int) ((vertex2.getY() - vertex1.getY()) / 2);
-    text("dist: " + this.distance, textX + vertex1.getX(), textY + vertex1.getY());
+    int textX = (int) ((destination.getX() - source.getX()) / 2);
+    int textY = (int) ((destination.getY() - source.getY()) / 2);
+    text("weight: " + this.weight, textX + this.source.getX(), textY + this.source.getY());
     //text("word", 10, 30)
   }
 }

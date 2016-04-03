@@ -23,7 +23,7 @@ public class Graph
   public Vector<Edge> getEdges()
   {
     return this.edges;
-  }  
+  }     
 
   private void generateVertices(int countVertices)
   {
@@ -62,8 +62,8 @@ public class Graph
           edgeAlreadyExists = false;
           for (Edge edge : this.edges)
           {
-            if (((edge.getVertex1() == v1) && (edge.getVertex2() == v2)) ||
-              ((edge.getVertex1() == v2) && (edge.getVertex2() == v1)))
+            if (((edge.getSource() == v1) && (edge.getDestination() == v2)) ||
+              ((edge.getSource() == v2) && (edge.getDestination() == v1)))
             {
               edgeAlreadyExists = true;
             }
